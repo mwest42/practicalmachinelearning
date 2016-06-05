@@ -1,0 +1,93 @@
+---
+title: "Practical Machine Learning Course Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objective
+
+The Weight Lifting Exercises dataset from http://groupware.les.inf.puc-rio.br/har was analyzed for this project.  The objective was to use machine learning to generate a model to determine how participants were performing biceps curl: with proper technique, or using one of four different incorrect methods.
+
+
+## Cleaning Data
+
+The WLE paper (Velloso, et al) mentions that some of the data is a summary of the other columns.  Loading in the training data set, the number of NAs in each column are counted.
+
+```{r cleaning, eval=TRUE}
+rawdata <- read.csv("pml-training.csv")
+countnas <- data.frame(totalna = sapply(rawdata,function(y) sum(is.na(y))))
+
+
+plot(countnas$totalna, type="p", ylab= "Count of NAs per row")
+```
+
+This reveals that each column either has no NAs, or nearly the entire column is NA.  These columns are lef out of the model.  Similarly, there are also many columns that have a high number of blanks, which are also excluded.  The first five columns are also excluded: the first appears to be an index, and the timestamps probably wouldn't be repeated in the test set.
+
+
+```{r column choice}
+nonna <- row.names(subset(countnas,totalna == 0))
+
+blanks <- data.frame(totblanks = sapply(rawdata,function(y) sum(y=="")))
+nonblank <- row.names(subset(blanks,blanks == 0))
+
+wledata<- rawdata[,nonna]
+wledata <- wledata[,nonblank]
+wledata <- wledata[,-c(1:5)]
+```
+
+
+## Cross-validation
+
+10-fold cross validation was used in the model selection.  This was done by using the trainControl parameter within the train option, as an alternative to the default method of bootstrapping.
+
+```{r model fit}
+library(caret)
+mod <- train(classe~.,data = wledata,method = "rf", trControl = trainControl
+             (method = "cv", number = 10), ntree=20)
+```
+
+
+## Model Selection
+
+The random forest method was chosen to create a classification model to determine the "classe" of the type of movement.  The number of trees was limited to 20 in order to limit the time it would take to generate the model.
+
+Plotting the finalModel shows that the error might still decrease past ntree=20, but the error is low nonetheless. 
+
+```{r trees, eval =TRUE}
+plot(mod$finalModel)
+```
+
+
+## Out of Sample Error
+
+The out of sample error is estimated by the Accuracy of the model on the training data.
+
+```{r Accuracy, eval=TRUE}
+
+confusionMatrix(predict(mod,wledata),wledata$classe)$overall['Accuracy']
+```
+
+
+## Prediction
+
+To predict the classe of the values in the test set, the columns are subset as they were for the training data.  Then the predict function is run with the model and the test data.
+
+```{r predict, eval=FALSE}
+testraw <- read.csv("pml-testing.csv")
+tnonna <- nonna[nonna !="classe"]
+tnonblank <- nonblank[nonblank != "classe"]
+
+testing <- testraw[,tnonna]
+testing <- testing[,tnonblank]
+testing <- testing[,-1]
+
+predict(mod,testing)
+```
+
+
+## Citations
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013
