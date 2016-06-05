@@ -21,10 +21,10 @@ rawdata <- read.csv("pml-training.csv")
 countnas <- data.frame(totalna = sapply(rawdata,function(y) sum(is.na(y))))
 
 
-plot(countnas$totalna, type="p", ylab= "Count of NAs per row")
+plot(countnas$totalna, type="p", ylab= "NAs per row", main = "NA count")
 ```
 
-This reveals that each column either has no NAs, or nearly the entire column is NA.  These columns are lef out of the model.  Similarly, there are also many columns that have a high number of blanks, which are also excluded.  The first five columns are also excluded: the first appears to be an index, and the timestamps probably wouldn't be repeated in the test set.
+This reveals that each column either has no NAs, or nearly the entire column is NA.  These columns are lef out of the model.  Similarly, there are also many columns that have a high number of blanks, which are also excluded.  The first five columns are also excluded: the first appears to be an index, and the same timestamps probably wouldn't be repeated in the test set.
 
 
 ```{r column choice}
@@ -57,13 +57,30 @@ The random forest method was chosen to create a classification model to determin
 Plotting the finalModel shows that the error might still decrease past ntree=20, but the error is low nonetheless. 
 
 ```{r trees, eval =TRUE}
-plot(mod$finalModel)
+plot(mod$finalModel, main = "Error by # of Trees Used")
 ```
 
+The train function also tunes for the number of variable that should be considered at each node of the tree.  In this case, the number of variabes is:
+
+```{r mtry, eval = TRUE}
+mod$finalModel$mtry
+```
+
+In this graph you can see the difference in error rate for a different number of predictor variables used.
+
+```{r mtry plot, eval = TRUE}
+plot(mod, main = "Accuracy per # of predictors")
+```
 
 ## Out of Sample Error
 
-The out of sample error is estimated by the Accuracy of the model on the training data.
+The out of sample error is estimated by the average accuracy of the cross-validation sets:
+
+```{r cv Accuract, eval = TRUE}
+mean(mod$resample$Accuracy)
+```
+
+There's also the accuracy of the model on the entire training set:
 
 ```{r Accuracy, eval=TRUE}
 
